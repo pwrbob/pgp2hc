@@ -33,11 +33,8 @@ fn encrypted_private_key() {
             );
 
             assert_eq!(pp.string_to_key().typ(), StringToKeyType::IteratedAndSalted);
-
             assert_eq!(pp.string_to_key().count(), Some(65536));
-
             assert_eq!(pp.string_to_key().hash(), HashAlgorithm::SHA2_256);
-
             assert_eq!(pp.encryption_algorithm(), SymmetricKeyAlgorithm::AES128);
             assert_eq!(pp.string_to_key_id(), 254);
         }
@@ -60,6 +57,15 @@ fn encrypted_private_key() {
             Ok(())
         },
     ).unwrap();
+}
+
+#[test]
+fn test_john_hashes() {
+    // test parsing and printing of hashes taken from the john implementation
+    for (hashstr, _) in JOHN_HASHES {
+        let x = input::parse(hashstr).unwrap();
+        assert_eq!(hashstr, &format!("{}", x))
+    }
 }
 
 // hashes and corresponding passwords
@@ -123,12 +129,3 @@ static JOHN_HASHES: &'static [(&str,&str)] = &[
     /* PGP Desktop 9.0.2 */
     ("$gpg$*0*66*c54842eed9b536e1fafad46aa233a6c158bd1fcabeed6b91531d8331a3452466d02446586b9b6837b510efbe95bb9f91c92d258be82f65092483812b896af3d4aa28*3*18*2*9*65536*b2688a012358b7fa", "openwall"),
 ];
-
-#[test]
-fn john_hashes() {
-    // test hashes taken from the john implementation
-    for (hashstr, _) in JOHN_HASHES {
-        let x = hash::parse(hashstr).unwrap();
-        assert_eq!(hashstr, &format!("{}", x))
-    }
-}
