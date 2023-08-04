@@ -6,15 +6,19 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+clap = { version = "4.3.19", features = ["derive"] }
+env_logger = "0.10.0"
 hex = "0.4.3"
+log = "0.4.19"
 pgp = "0.10"
 rsa = "0.9.2"
+strum_macros = "0.25.1"
 
 [lib]
 doctest = false
 
 [[bin]]
-name = "main"
+name = "pgp2hc"
 path = "src/main.rs"
 test = false
 doctest = false

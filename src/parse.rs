@@ -19,14 +19,14 @@ fn parse_extra_fields<'a>(
 fn parse_extra_data<'a>(
     iter: impl Iterator<Item = &'a str>,
     usage: Usage,
-    spec: Spec,
+    s2k: StringToKey,
     alg: Algorithm,
 ) -> Result<Option<ExtraData>, Box<dyn std::error::Error>> {
     if usage != Usage::TwoFiveFive {
         return Ok(None);
     }
-    Ok(match (spec, alg) {
-        (Spec::Salted, Algorithm::DSA) => {
+    Ok(match (s2k, alg) {
+        (StringToKey::Salted, Algorithm::DSA) => {
             let mut x = parse_extra_fields(iter, 4)?.into_iter();
             // unwrap OK because function above verifies that we have 4
             Some(ExtraData::Dsa {
@@ -36,7 +36,7 @@ fn parse_extra_data<'a>(
                 y: x.next().unwrap(),
             })
         }
-        (Spec::Salted, Algorithm::ElGamal) => {
+        (StringToKey::Salted, Algorithm::ElGamal) => {
             let mut x = parse_extra_fields(iter, 3)?.into_iter();
             Some(ExtraData::ElGamal {
                 p: x.next().unwrap(),
@@ -44,10 +44,10 @@ fn parse_extra_data<'a>(
                 y: x.next().unwrap(),
             })
         }
-        (Spec::Salted, _) => Some(ExtraData::Rsa {
+        (StringToKey::Salted, _) => Some(ExtraData::Rsa {
             p: parse_extra_fields(iter, 1)?.into_iter().next().unwrap(),
         }),
-        (Spec::IteratedSalted, Algorithm::DSA) => {
+        (StringToKey::IteratedSalted, Algorithm::DSA) => {
             let mut x = parse_extra_fields(iter, 4)?.into_iter();
             Some(ExtraData::Dsa {
                 p: x.next().unwrap(),
@@ -56,7 +56,7 @@ fn parse_extra_data<'a>(
                 y: x.next().unwrap(),
             })
         }
-        (Spec::IteratedSalted, Algorithm::ElGamal) => {
+        (StringToKey::IteratedSalted, Algorithm::ElGamal) => {
             let mut x = parse_extra_fields(iter, 3)?.into_iter();
             Some(ExtraData::ElGamal {
                 p: x.next().unwrap(),
@@ -64,7 +64,7 @@ fn parse_extra_data<'a>(
                 y: x.next().unwrap(),
             })
         }
-        (Spec::IteratedSalted, Algorithm::RSAEncSign) => Some(ExtraData::Rsa {
+        (StringToKey::IteratedSalted, Algorithm::RSAEncSign) => Some(ExtraData::Rsa {
             p: parse_extra_fields(iter, 1)?.into_iter().next().unwrap(),
         }),
         _ => None,
@@ -88,10 +88,10 @@ pub fn parse_hash(input: &str) -> Result<PgpHash, Box<dyn std::error::Error>> {
         )?),
     };
     let data = hex::decode(iter.next().ok_or("not enough tokens in hash")?)?;
-    let spec = Spec::from_repr(str::parse::<i32>(
+    let s2k = StringToKey::from_repr(str::parse::<i32>(
         iter.next().ok_or("not enough tokens in hash")?,
     )?)
-    .ok_or("invalid value for 'spec'")?;
+    .ok_or("invalid value for 's2k'")?;
     let usage = Usage::from_repr(str::parse::<i32>(
         iter.next().ok_or("not enough tokens in hash")?,
     )?)
@@ -114,8 +114,8 @@ pub fn parse_hash(input: &str) -> Result<PgpHash, Box<dyn std::error::Error>> {
         }
     };
     // count/salt only if we have a salted hash
-    let (count, salt_vec) = match spec {
-        Spec::Simple => (None, None),
+    let (count, salt_vec) = match s2k {
+        StringToKey::Simple => (None, None),
         _ => {
             let count = str::parse::<usize>(iter.next().ok_or("not enough tokens in hash")?)?;
             let salt_vec = hex::decode(iter.next().ok_or("not enough tokens in hash")?)?;
@@ -123,7 +123,7 @@ pub fn parse_hash(input: &str) -> Result<PgpHash, Box<dyn std::error::Error>> {
         }
     };
     // handle extra data
-    let extra_data = parse_extra_data(iter, usage, spec, algorithm)?;
+    let extra_data = parse_extra_data(iter, usage, s2k, algorithm)?;
 
     // checks
     if data.len() != data_len {
@@ -174,7 +174,7 @@ pub fn parse_hash(input: &str) -> Result<PgpHash, Box<dyn std::error::Error>> {
         data_len,
         bits,
         data,
-        spec,
+        s2k,
         usage,
         hash_algorithm,
         cipher_algorithm,
