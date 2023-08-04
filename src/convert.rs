@@ -1,5 +1,8 @@
 use crate::hash::{Algorithm, CipherAlgorithm, HashAlgorithm, PgpHash, StringToKey, Usage};
-use pgp::packet::SecretKey;
+use pgp::{
+    packet::{SecretKey, SecretSubkey},
+    types::{PublicParams, SecretParams},
+};
 use std::error::Error;
 
 /// This function gets everything needed to output a PgpHash:
@@ -10,7 +13,18 @@ use std::error::Error;
 ///   - s2k parameters: s2k, usage, count, salt
 ///   - hash and cipher algorithms
 pub(crate) fn secretkey_to_pgphash(key: SecretKey) -> Result<PgpHash, Box<dyn Error>> {
-    let (algorithm, bits) = match key.public_params() {
+    helper(key.public_params(), key.secret_params())
+}
+
+pub(crate) fn secretsubkey_to_pgphash(key: SecretSubkey) -> Result<PgpHash, Box<dyn Error>> {
+    helper(key.public_params(), key.secret_params())
+}
+
+fn helper(
+    public_params: &PublicParams,
+    secret_params: &SecretParams,
+) -> Result<PgpHash, Box<dyn Error>> {
+    let (algorithm, bits) = match public_params {
         pgp::types::PublicParams::RSA { n, e: _ } => {
             (Algorithm::RSAEncSign, n.as_bytes().len() * 8)
         }
@@ -39,7 +53,7 @@ pub(crate) fn secretkey_to_pgphash(key: SecretKey) -> Result<PgpHash, Box<dyn Er
         }
         pgp::types::PublicParams::EdDSA { curve: _, q } => (Algorithm::EC, q.as_bytes().len() * 8),
     };
-    match key.secret_params() {
+    match secret_params {
         pgp::types::SecretParams::Plain(_) => {
             Err("unexpectedly found plaintext secret parameters!".into())
         }
