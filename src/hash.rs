@@ -1,11 +1,10 @@
 use std::fmt::Display;
 use strum_macros::FromRepr;
 
-// #[derive(FromPrimitive)]
 #[derive(Clone, Copy, Debug, FromRepr, PartialEq, Eq)]
 #[repr(i32)]
 pub enum Spec {
-    /// If no salt, `count` and `salt` are None
+    /// In this case no salt is used, so `count` and `salt` in the hash are None
     Simple = 0,
     Salted = 1,
     IteratedSalted = 3,

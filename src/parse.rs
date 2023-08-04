@@ -1,8 +1,4 @@
 use crate::hash::*;
-// use pgp::{
-//     key_parser, packet::PacketParser, Deserializable, SecretKey, SignedKeyDetails, SignedSecretKey,
-// };
-// use std::path::Path;
 
 fn parse_extra_fields<'a>(
     mut iter: impl Iterator<Item = &'a str>,
@@ -75,7 +71,7 @@ fn parse_extra_data<'a>(
     })
 }
 
-pub fn parse(input: &str) -> Result<PgpHash, Box<dyn std::error::Error>> {
+pub fn parse_hash(input: &str) -> Result<PgpHash, Box<dyn std::error::Error>> {
     if !input.starts_with("$gpg$*") {
         return Err("invalid prefix, must be '$pgp$'".into());
     }

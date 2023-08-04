@@ -6,6 +6,23 @@ use pgp::{
 };
 use rsa::traits::{PrivateKeyParts, PublicKeyParts};
 
+// #[test]
+// fn extract_hash_rsa() {
+//     let example = "testkey1";
+
+//     // load two files: the private key file and the expected hash (created using gpg2john)
+//     let secret_key = std::fs::read(format!("data/{example}.txt")).unwrap();
+//     let hash_john = std::fs::read_to_string(format!("data/{example}.hash")).unwrap();
+
+//     let path = PathBuf::from(format!("data/{example}.txt"));
+//     let key = read_key(&path);
+
+//     assert_eq!(
+//         extract_hash(&secret_key, HashFormat::John).unwrap(),
+//         hash_john
+//     );
+// }
+
 #[test]
 fn encrypted_private_key() {
     let buf = std::fs::read("./data/gnupg-v1-001-decrypt.asc").unwrap();
@@ -63,7 +80,7 @@ fn encrypted_private_key() {
 fn test_john_hashes() {
     // test parsing and printing of hashes taken from the john implementation
     for (hashstr, _) in JOHN_HASHES {
-        let x = input::parse(hashstr).unwrap();
+        let x = parse_hash(hashstr).unwrap();
         assert_eq!(hashstr, &format!("{}", x))
     }
 }

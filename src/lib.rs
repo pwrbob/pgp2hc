@@ -1,5 +1,9 @@
+mod hash;
+mod parse;
 #[cfg(test)]
 mod test;
+
+pub use parse::parse_hash;
 
 use std::error::Error;
 
