@@ -18,7 +18,9 @@ Passphrase: ${password}
 EOF
 
 echo "exporting key to ${keyfile}"
-gpg --export -a ${username} > ${keyfile}
+#gpg --export-secret-key --export-options export-backup -a ${username} > ${keyfile}
+gpg --batch --export-secret-keys --export-options export-backup --pinentry-mode=loopback --passphrase ${password} -a ${username} > ${keyfile}
+#gpg --batch --export-secret-keys --pinentry-mode=loopback -a ${username} --passphrase ${password} > ${keyfile}
 
 # now, delete the key
 fingerprint=$(gpg --list-secret-keys 'Fred' | sed '2!d' | tr -d " ")
