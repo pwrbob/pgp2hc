@@ -151,16 +151,16 @@ fn hash_output_eq(hash1: &str, hash2: &str) {
 /// test all GPG samples in the john-samples repository
 #[test]
 fn test_john_samples() {
-    dotenv::dotenv().unwrap();
+    let _ = dotenv::dotenv();
     // require an environment variable specifying the path to the john-samples repository root
     let mut path =
         PathBuf::from(env::var("JOHN_SAMPLES_PATH").expect(
-            "specify the path to john-samples in a JOHN_SAMPLES_PATH variable in a .env file",
+            "specify the path to the root of the john-samples repo in a JOHN_SAMPLES_PATH variable in a .env file",
         ));
     // require an environment variable specfying the path to the john repository
     let mut johnpath = PathBuf::from(env::var("JOHN_PATH").expect(
-        "specify the path to the john repository (without run/john) in a JOHN_PATH variable in a .env file"
-        ));
+        "specify the path to the root of the john repo in a JOHN_PATH variable in a .env file",
+    ));
     johnpath.extend(["run", "gpg2john"]);
     // remaining test cases:
     path.extend(["GPG", "gpg-70_flavors"]);
