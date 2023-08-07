@@ -28,10 +28,12 @@ fn helper(
         pgp::types::PublicParams::RSA { n, e: _ } => {
             (Algorithm::RSAEncSign, n.as_bytes().len() * 8)
         }
-        pgp::types::PublicParams::DSA { p, q, g: _, y: _ } => (
-            Algorithm::DSA,
-            (p.as_bytes().len() + q.as_bytes().len()) * 8,
-        ),
+        pgp::types::PublicParams::DSA {
+            p,
+            q: _,
+            g: _,
+            y: _,
+        } => (Algorithm::DSA, p.as_bytes().len() * 8),
         pgp::types::PublicParams::ECDSA(params) => {
             let bits = match params {
                 pgp::types::EcdsaPublicParams::P256 { key: _, p } => p.as_bytes().len() * 8,

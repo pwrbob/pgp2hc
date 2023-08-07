@@ -79,6 +79,9 @@ pub fn handle_file(data: &[u8], args: &Cli) -> String {
                         } else {
                             String::from("")
                         };
+                        if ret.len() > 0 {
+                            ret += "\n";
+                        }
                         ret += &format!(
                             "{}:{h}:::{}{}::{}",
                             u.name,
