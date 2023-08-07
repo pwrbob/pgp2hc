@@ -36,8 +36,11 @@ pub enum HashFormat {
     Hashcat,
 }
 
+/// Extract hashcat/john hashes from encrypted secret keys in the OpenPGP format
 #[derive(Parser)]
+#[command(version)]
 pub struct Cli {
+    /// The file containing the encrypted secret key
     pub path: PathBuf,
     /// The format in which to output the hash
     #[clap(short, long, value_enum, default_value_t=HashFormat::Hashcat)]
