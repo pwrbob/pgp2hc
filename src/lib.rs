@@ -11,8 +11,11 @@ use clap::{Parser, ValueEnum};
 use convert::{secretkey_to_pgphash, secretsubkey_to_pgphash};
 use hash::PgpHash;
 pub use parse::parse_hash;
-use pgp::packet::{Packet, PacketParser};
-use std::{error::Error, path::PathBuf};
+use pgp::{
+    armor::Dearmor,
+    packet::{Packet, PacketParser},
+};
+use std::{error::Error, io::Read, path::PathBuf};
 
 #[derive(Debug)]
 pub struct UserInfo {
@@ -47,7 +50,20 @@ pub struct Cli {
     pub _no_subkeys: bool,
 }
 
-pub fn handle_file(data: &[u8], args: &Cli) -> String {
+pub fn extract_hash(args: &Cli) -> Result<String, Box<dyn Error>> {
+    let mut f = std::fs::File::open(&args.path).expect("could not open the specified file");
+    let mut buf = Vec::new();
+    let read_bytes = match args._no_dearmor {
+        true => f.read_to_end(&mut buf),
+        false => Dearmor::new(f).read_to_end(&mut buf),
+    }
+    .unwrap();
+    log::info!("read {read_bytes} bytes from file {:?}", args.path);
+
+    Ok(handle_file(&buf[..], &args))
+}
+
+fn handle_file(data: &[u8], args: &Cli) -> String {
     let mut ret = String::new();
     let parser = PacketParser::new(data);
 

@@ -1,12 +1,11 @@
 use super::*;
 use pgp::{
-    armor::Dearmor,
     crypto::{hash::HashAlgorithm, sym::SymmetricKeyAlgorithm},
     types::*,
     Deserializable, SignedSecretKey,
 };
 use rsa::traits::{PrivateKeyParts, PublicKeyParts};
-use std::io::Read;
+use std::{collections::HashMap, env, ffi::OsString, process::Command};
 
 #[test]
 fn encrypted_private_key() {
@@ -45,7 +44,6 @@ fn encrypted_private_key() {
     key.unlock(
         || "test".to_string(),
         |k| {
-            println!("{:?}", k);
             match k {
                 SecretKeyRepr::RSA(k) => {
                     assert_eq!(k.e().to_bytes_be(), hex::decode("010001").unwrap().to_vec());
@@ -78,16 +76,13 @@ fn test_john_compatibility() {
         if !fname.exists() {
             break;
         }
-        // get key file
-        let mut buf = Vec::new();
-        let keyfile = std::fs::File::open(&fname).unwrap();
-        Dearmor::new(keyfile).read_to_end(&mut buf).unwrap();
         args.path = fname.clone();
-        // get hash
+
+        // get correct hash
         fname.set_extension("hash");
         let hash_john = std::fs::read_to_string(&fname).unwrap();
 
-        assert_eq!(handle_file(&buf, &args) + "\n", hash_john);
+        assert_eq!(extract_hash(&args).unwrap() + "\n", hash_john);
         index += 1;
     }
 }
@@ -98,6 +93,101 @@ fn test_parse_john_hashes() {
     for (hashstr, _) in JOHN_HASHES {
         let x = parse_hash(hashstr).unwrap();
         assert_eq!(hashstr, &format!("{}", x))
+    }
+}
+
+fn strip_first_last(h: &str) -> String {
+    let data: Vec<_> = h.split(":").collect();
+    data[1..data.len() - 1]
+        .into_iter()
+        .fold(String::new(), |x, y| x + ":" + y)
+}
+
+// given multiple lines with hashes, check that they are the same
+fn hash_output_eq(hash1: &str, hash2: &str) {
+    let mut it1 = hash1.lines();
+    let mut it2 = hash2.lines();
+    while let Some(x1) = it1.next() {
+        let x2 = it2.next().unwrap();
+        assert_eq!(strip_first_last(x1), strip_first_last(x2));
+    }
+}
+
+// /// test utf-8 sample in the john-samples repository
+// #[test]
+// fn test_john_utf8_samples() {
+//     dotenv::dotenv().unwrap();
+//     // require an environment variable specifying the path to the john-samples repository root
+//     let mut path =
+//         PathBuf::from(env::var("JOHN_SAMPLES_PATH").expect(
+//             "specify the path to john-samples in a JOHN_SAMPLES_PATH variable in a .env file",
+//         ));
+//     // require an environment variable specfying the path to the john repository
+//     let mut johnpath = PathBuf::from(env::var("JOHN_PATH").expect(
+//         "specify the path to the john repository (without run/john) in a JOHN_PATH variable in a .env file"
+//         ));
+//     johnpath.extend(["run", "gpg2john"]);
+//     path.push("GPG");
+//     // one test case: utf-8 in Name
+//     let mut fname = path.clone();
+//     fname.push("test.utf8.asc");
+//     let hash = extract_hash(&Cli {
+//         path: fname.clone(),
+//         format: HashFormat::John,
+//         _no_dearmor: false,
+//         _no_subkeys: true,
+//     })
+//     .unwrap();
+//     let hash_john = Command::new(johnpath.to_str().unwrap())
+//         .arg(fname.as_os_str())
+//         .output()
+//         .unwrap()
+//         .stdout;
+//     let hash_john = std::str::from_utf8(&hash_john).unwrap();
+//     assert!(hash.contains("Łąśóęśżźć"));
+//     hash_output_eq(&hash, &hash_john);
+// }
+
+/// test all GPG samples in the john-samples repository
+#[test]
+fn test_john_samples() {
+    dotenv::dotenv().unwrap();
+    // require an environment variable specifying the path to the john-samples repository root
+    let mut path =
+        PathBuf::from(env::var("JOHN_SAMPLES_PATH").expect(
+            "specify the path to john-samples in a JOHN_SAMPLES_PATH variable in a .env file",
+        ));
+    // require an environment variable specfying the path to the john repository
+    let mut johnpath = PathBuf::from(env::var("JOHN_PATH").expect(
+        "specify the path to the john repository (without run/john) in a JOHN_PATH variable in a .env file"
+        ));
+    johnpath.extend(["run", "gpg2john"]);
+    // remaining test cases:
+    path.extend(["GPG", "gpg-70_flavors"]);
+
+    for p in path.read_dir().unwrap() {
+        let p = p.unwrap().path();
+        if p.is_file() {
+            if p.extension() == Some(&OsString::from("sec")) {
+                // get the correct hash
+                let hash_john = Command::new(johnpath.to_str().unwrap())
+                    .arg(p.as_os_str())
+                    .output()
+                    .unwrap()
+                    .stdout;
+                let hash_john = std::str::from_utf8(&hash_john).unwrap();
+                // get our hash
+                let h_me = extract_hash(&Cli {
+                    path: p,
+                    format: HashFormat::John,
+                    _no_dearmor: false,
+                    _no_subkeys: true,
+                })
+                .unwrap();
+                // first and last parts are different
+                assert_eq!(strip_first_last(hash_john), strip_first_last(&h_me));
+            }
+        }
     }
 }
 
