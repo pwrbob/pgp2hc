@@ -24,10 +24,13 @@ pub enum Artefact {
     User(UserInfo),
 }
 
-pub fn handle_packet(packet: Packet) -> Result<Option<Artefact>, Box<dyn Error>> {
+pub fn handle_packet(packet: Packet, no_subkeys: bool) -> Result<Option<Artefact>, Box<dyn Error>> {
     Ok(match packet {
         Packet::SecretKey(x) => Some(Artefact::Hash(secretkey_to_pgphash(x)?)),
-        Packet::SecretSubkey(x) => Some(Artefact::Hash(secretsubkey_to_pgphash(x)?)),
+        Packet::SecretSubkey(x) => match no_subkeys {
+            true => None,
+            false => Some(Artefact::Hash(secretsubkey_to_pgphash(x)?)),
+        },
         Packet::Signature(_) => {
             log::info!("ignoring Signature packet");
             None
@@ -66,7 +69,7 @@ pub fn handle_packet(packet: Packet) -> Result<Option<Artefact>, Box<dyn Error>>
         // Packet::PublicKey(_) => todo!(),
         // Packet::PublicSubkey(_) => todo!(),
         _ => {
-            log::info!("ignoring packet");
+            log::info!("ignoring unhandled packet");
             None
         }
     })

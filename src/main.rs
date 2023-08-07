@@ -20,6 +20,9 @@ struct Cli {
     /// don't dearmor the given file
     #[clap(long)]
     _no_dearmor: bool,
+    /// don't extract hashes from subkeys
+    #[clap(long)]
+    _no_subkeys: bool,
 }
 
 fn main() {
@@ -34,7 +37,7 @@ fn main() {
         false => Dearmor::new(f).read_to_end(&mut buf),
     }
     .unwrap();
-    log::info!("read {read_bytes} from file {:?}", args.path);
+    log::info!("read {read_bytes} bytes from file {:?}", args.path);
 
     let parser = PacketParser::new(&buf[..]);
 
@@ -44,7 +47,7 @@ fn main() {
     for item in parser {
         match item {
             Ok(packet) => {
-                if let Some(art) = handle_packet(packet).unwrap() {
+                if let Some(art) = handle_packet(packet, args._no_subkeys).unwrap() {
                     match art {
                         Artefact::Hash(h) => hashes.push(h),
                         Artefact::User(u) => user = Some(u),
