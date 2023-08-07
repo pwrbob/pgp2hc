@@ -7,11 +7,12 @@ mod parse;
 #[cfg(test)]
 mod test;
 
+use clap::{Parser, ValueEnum};
 use convert::{secretkey_to_pgphash, secretsubkey_to_pgphash};
 use hash::PgpHash;
 pub use parse::parse_hash;
-use pgp::packet::Packet;
-use std::error::Error;
+use pgp::packet::{Packet, PacketParser};
+use std::{error::Error, path::PathBuf};
 
 #[derive(Debug)]
 pub struct UserInfo {
@@ -22,6 +23,78 @@ pub struct UserInfo {
 pub enum Artefact {
     Hash(PgpHash),
     User(UserInfo),
+}
+
+#[derive(Clone, Debug, ValueEnum)]
+pub enum HashFormat {
+    /// Format used by John the Ripper
+    John,
+    /// Format used by hashcat
+    Hashcat,
+}
+
+#[derive(Parser)]
+pub struct Cli {
+    pub path: PathBuf,
+    /// The format in which to output the hash
+    #[clap(short, long, value_enum, default_value_t=HashFormat::Hashcat)]
+    pub format: HashFormat,
+    /// don't dearmor the given file
+    #[clap(long)]
+    pub _no_dearmor: bool,
+    /// don't extract hashes from subkeys
+    #[clap(long)]
+    pub _no_subkeys: bool,
+}
+
+pub fn handle_file(data: &[u8], args: &Cli) -> String {
+    let mut ret = String::new();
+    let parser = PacketParser::new(data);
+
+    let mut hashes = Vec::new();
+    let mut user = None;
+
+    for item in parser {
+        match item {
+            Ok(packet) => {
+                if let Some(art) = handle_packet(packet, args._no_subkeys).unwrap() {
+                    match art {
+                        Artefact::Hash(h) => hashes.push(h),
+                        Artefact::User(u) => user = Some(u),
+                    }
+                }
+            }
+            Err(e) => eprintln!("Error getting a packet: {e}"),
+        }
+    }
+
+    for h in hashes {
+        match args.format {
+            HashFormat::John => {
+                //<username>:<hash>:::<name_with_email>::<filename>
+                match &user {
+                    Some(u) => {
+                        let email_str = if u.email.len() > 0 {
+                            String::from(" ") + &u.email
+                        } else {
+                            String::from("")
+                        };
+                        ret += &format!(
+                            "{}:{h}:::{}{}::{}",
+                            u.name,
+                            u.name,
+                            email_str,
+                            args.path.to_str().unwrap()
+                        );
+                    }
+                    None => {}
+                }
+            }
+            HashFormat::Hashcat => println!("{h}"),
+        }
+    }
+
+    ret
 }
 
 pub fn handle_packet(packet: Packet, no_subkeys: bool) -> Result<Option<Artefact>, Box<dyn Error>> {

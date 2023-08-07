@@ -1,27 +1,12 @@
 use super::*;
 use pgp::{
+    armor::Dearmor,
     crypto::{hash::HashAlgorithm, sym::SymmetricKeyAlgorithm},
     types::*,
     Deserializable, SignedSecretKey,
 };
 use rsa::traits::{PrivateKeyParts, PublicKeyParts};
-
-// #[test]
-// fn extract_hash_rsa() {
-//     let example = "testkey1";
-
-//     // load two files: the private key file and the expected hash (created using gpg2john)
-//     let secret_key = std::fs::read(format!("data/{example}.txt")).unwrap();
-//     let hash_john = std::fs::read_to_string(format!("data/{example}.hash")).unwrap();
-
-//     let path = PathBuf::from(format!("data/{example}.txt"));
-//     let key = read_key(&path);
-
-//     assert_eq!(
-//         extract_hash(&secret_key, HashFormat::John).unwrap(),
-//         hash_john
-//     );
-// }
+use std::io::Read;
 
 #[test]
 fn encrypted_private_key() {
@@ -76,8 +61,39 @@ fn encrypted_private_key() {
     ).unwrap();
 }
 
+/// This test compares to a set of hashes pre-generated with john's gpg2john utility.
 #[test]
-fn test_john_hashes() {
+fn test_john_compatibility() {
+    let mut args = Cli {
+        path: "".into(),
+        format: HashFormat::John,
+        _no_dearmor: false,
+        _no_subkeys: true,
+    };
+    let basedir = PathBuf::from("data");
+    let mut index = 1;
+    loop {
+        let mut fname = basedir.clone();
+        fname.push(format!("testkey{index}.key"));
+        if !fname.exists() {
+            break;
+        }
+        // get key file
+        let mut buf = Vec::new();
+        let keyfile = std::fs::File::open(&fname).unwrap();
+        Dearmor::new(keyfile).read_to_end(&mut buf).unwrap();
+        args.path = fname.clone();
+        // get hash
+        fname.set_extension("hash");
+        let hash_john = std::fs::read_to_string(&fname).unwrap();
+
+        assert_eq!(handle_file(&buf, &args) + "\n", hash_john);
+        index += 1;
+    }
+}
+
+#[test]
+fn test_parse_john_hashes() {
     // test parsing and printing of hashes taken from the john implementation
     for (hashstr, _) in JOHN_HASHES {
         let x = parse_hash(hashstr).unwrap();
