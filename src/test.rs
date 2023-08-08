@@ -5,7 +5,7 @@ use pgp::{
     Deserializable, SignedSecretKey,
 };
 use rsa::traits::{PrivateKeyParts, PublicKeyParts};
-use std::{collections::HashMap, env, ffi::OsString, process::Command};
+use std::{env, ffi::OsString, process::Command};
 
 #[test]
 fn encrypted_private_key() {
@@ -98,7 +98,7 @@ fn test_parse_john_hashes() {
 
 fn strip_first_last(h: &str) -> String {
     let data: Vec<_> = h.split(":").collect();
-    data[1..data.len() - 1]
+    data[0..data.len() - 1]
         .into_iter()
         .fold(String::new(), |x, y| x + ":" + y)
 }
@@ -113,40 +113,39 @@ fn hash_output_eq(hash1: &str, hash2: &str) {
     }
 }
 
-// /// test utf-8 sample in the john-samples repository
-// #[test]
-// fn test_john_utf8_samples() {
-//     dotenv::dotenv().unwrap();
-//     // require an environment variable specifying the path to the john-samples repository root
-//     let mut path =
-//         PathBuf::from(env::var("JOHN_SAMPLES_PATH").expect(
-//             "specify the path to john-samples in a JOHN_SAMPLES_PATH variable in a .env file",
-//         ));
-//     // require an environment variable specfying the path to the john repository
-//     let mut johnpath = PathBuf::from(env::var("JOHN_PATH").expect(
-//         "specify the path to the john repository (without run/john) in a JOHN_PATH variable in a .env file"
-//         ));
-//     johnpath.extend(["run", "gpg2john"]);
-//     path.push("GPG");
-//     // one test case: utf-8 in Name
-//     let mut fname = path.clone();
-//     fname.push("test.utf8.asc");
-//     let hash = extract_hash(&Cli {
-//         path: fname.clone(),
-//         format: HashFormat::John,
-//         _no_dearmor: false,
-//         _no_subkeys: true,
-//     })
-//     .unwrap();
-//     let hash_john = Command::new(johnpath.to_str().unwrap())
-//         .arg(fname.as_os_str())
-//         .output()
-//         .unwrap()
-//         .stdout;
-//     let hash_john = std::str::from_utf8(&hash_john).unwrap();
-//     assert!(hash.contains("Łąśóęśżźć"));
-//     hash_output_eq(&hash, &hash_john);
-// }
+/// test utf-8 sample in the john-samples repository
+#[test]
+fn test_john_utf8_samples() {
+    dotenv::dotenv().unwrap();
+    // require an environment variable specifying the path to the john-samples repository root
+    let mut path =
+        PathBuf::from(env::var("JOHN_SAMPLES_PATH").expect(
+            "specify the path to john-samples in a JOHN_SAMPLES_PATH variable in a .env file",
+        ));
+    // require an environment variable specfying the path to the john repository
+    let mut johnpath = PathBuf::from(env::var("JOHN_PATH").expect(
+        "specify the path to the john repository (without run/john) in a JOHN_PATH variable in a .env file"
+        ));
+    johnpath.extend(["run", "gpg2john"]);
+    path.push("GPG");
+    // one test case: utf-8 in Name
+    let mut fname = path.clone();
+    fname.push("test.utf8.asc");
+    let hash = extract_hash(&Cli {
+        path: fname.clone(),
+        format: HashFormat::John,
+        _no_dearmor: false,
+        _no_subkeys: true,
+    })
+    .unwrap();
+    let hash_john = Command::new(johnpath.to_str().unwrap())
+        .arg(fname.as_os_str())
+        .output()
+        .unwrap()
+        .stdout;
+    let hash_john = std::str::from_utf8(&hash_john).unwrap();
+    hash_output_eq(&hash_john, &hash);
+}
 
 /// test all GPG samples in the john-samples repository
 #[test]
