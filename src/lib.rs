@@ -131,7 +131,7 @@ fn handle_file(data: &[u8], args: &Cli) -> String {
                     args.path.to_str().unwrap()
                 );
             }
-            HashFormat::Hashcat => println!("{h}"),
+            HashFormat::Hashcat => ret += &format!("{h}"),
         }
     }
 
